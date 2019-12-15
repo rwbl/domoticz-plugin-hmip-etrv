@@ -22,13 +22,12 @@ This plugin creates the Domoticz Devices (Type,SubType):
 * Temperature (Temp,LaCrosse TX3)
 * Battery (General,Alert)
 
-See also brief documentation domoticz-plugin-hmip-etrv.pdf.
-
-### Communication
-![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
-
+### Hardware
+![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
 ### Devices
 ![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/70861021-04086280-1f29-11ea-83ca-37c2da9e2ce2.png)
+### Communication
+![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
 
 ## Hardware
 * Raspberry Pi 3B+ (RaspberryMatic System)
@@ -211,7 +210,6 @@ Example for new Domotcz hardware named "Thermostat MakeLab":
 * Thermostat MakeLab - Temperature (Temp, LaCrosse TX3)
 * Thermostat MakeLab - Battery (General, Alert)
 
-![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
 
 ## Plugin Pseudo Code
 Source code (well documented): plugin.py
