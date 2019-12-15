@@ -245,15 +245,13 @@ This is the iteration process during development - build the solution step-by-st
 
 ## Domoticz Add Hardware
 **IMPORTANT**
-Prior adding, set GUI > Settings the option to allow new hardware.
+Prior adding, set the GUI > Settings option to allow new hardware.
 If this option is not enabled, no new devices are created.
-Check the GUI > Setup > Log as error message Python script at the line where the new device is used
+Check the GUI > Setup > Log for any error messages from the Python script at the line where the new device is used
 (i.e. Domoticz.Debug("Device created: "+Devices[1].Name))
 
 In the GUI > Setup > Hardware add the new hardware **homematicIP Radiator Thermostat (HMIP-eTRV)**.
 The initial check interval is set at 60 seconds. This is a good value for testing, but for final version set to higher value like every 5 minutes (300 seconds).
-
-![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70860863-45980e00-1f27-11ea-89b7-a84367ca9746.png)
 
 ## Add Hardware - Check the Domoticz Log
 After adding, ensure to check the Domoticz Log (GUI > Setup > Log)
