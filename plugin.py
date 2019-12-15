@@ -29,7 +29,7 @@
         </ul>
         <h2>Hardware Configuration</h2>
         <ul style="list-style-type:square">
-            <li>Address (CCU IP address, default: 192.168.1.225)</li>
+            <li>Address (CCU IP address, default: NNN.NNN.N.NNN)</li>
             <li>IDs (obtained via XML-API script http://ccu-ip-address/config/xmlapi/statelist.cgi):</li>
             <ul style="list-style-type:square">
                 <li>Device ID HmIP-eTRV-B or HmIP-eTRV-2 (default: 1541)</li>
@@ -39,7 +39,7 @@
         </ul>
     </description>
     <params>
-        <param field="Address" label="CCU IP" width="200px" required="true" default="192.168.1.225"/>
+        <param field="Address" label="CCU IP" width="200px" required="true" default="NNN.NNN.N.NNN"/>
         <param field="Mode1" label="Device ID" width="75px" required="true" default="1541"/>
         <param field="Mode2" label="Datapoint IDs" width="150px" required="true" default="1584,1567,1549"/>
         <param field="Mode5" label="Check Interval (sec)" width="75px" required="true" default="60"/>
