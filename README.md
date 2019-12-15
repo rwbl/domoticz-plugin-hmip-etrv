@@ -24,11 +24,15 @@ This plugin creates the Domoticz Devices (Type,SubType):
 
 See also brief documentation domoticz-plugin-hmip-etrv.pdf.
 
-![domoticz-plugin-HMIP-eTRV-f](https://user-images.githubusercontent.com/47274144/60536359-5ac90980-9d06-11e9-8863-4b968fb69d2c.PNG)
+### Communication
+![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
+
+### Devices
+![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/70860862-45980e00-1f27-11ea-9ea1-ab2ec9a803c0.png)
 
 ## Hardware
 * Raspberry Pi 3B+ (RaspberryMatic System)
-* homematicIP Radiator Thermostat (HMIP-eTRV-2, Product ref.: 140280A0)
+* homematicIP Radiator Thermostats HmIP-eTRV-B and HmIP-eTRV-2
 
 ## Software
 Versions for developing & using this plugin.
@@ -58,7 +62,7 @@ Each plugin requires a dedicated subfolder in the Domoticz plugins folder, which
 ``` 
 mkdir /home/pi/domoticz/plugins/hmip-etrv
 ``` 
-Copy the file __plugin.py__ to the newly created folder.
+Copy the file **plugin.py** to the newly created folder.
 
 ### Restart Domoticz
 After adding the plugin, Domotcicz requirs a restart to recognize the new hardware.
@@ -101,7 +105,7 @@ The id solution is much faster and also more flexible in defining and obtaning i
 
 ## Device Datapoint ID
 Steps to obtain the device datapoint id to be able to set or get data.
-The device datapoint id will be used in the plugin general parameter __Mode1__.
+The device datapoint id will be used in the plugin general parameter **Mode1**.
 
 ### Get Device Channels
 Get the device channel or name from the HomeMatic WebUI > Status and control > Devices > select name. Example default name=HMIP-eTRV-2 000A18A9A64DAC or renamed=Thermostat MakeLab
@@ -118,12 +122,11 @@ The HTTP response is an XML string with the state list for all devices used (can
 From the HTTP XML-API response, search for the device name and otain the device id, i.e. 1541.
 
 ### Get Device Datapoints
-HTTP XML-API request url using the state script and device id (ise_id) as parameter.
+**HTTP XML-API request** URL using the state script and device id (ise_id) as parameter.
 ``` 
 http://ccu-ip-address/config/xmlapi/state.cgi?device_id=1541
 ``` 
-
-HTTP Response
+**HTTP XML-API Response**
 ``` 
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <state>
@@ -173,34 +176,33 @@ HTTP Response
 </device>
 </state>
 ``` 
-Get the datapoints required for the plugin
+**Datapoints**
+Get the datapoint IDs required for the plugin:
 * LOW_BAT, id=1549 - used to check low battery state via alert level=1(green) or 4(red) and sent notification if alert level 4.
 * ACTUAL_TEMPERATURE, id=1567 - used to get the room temperature.
 * SET_POINT_TEMPERATURE, id=1584 - used to change the setpoint via Domoticz Thermostat device.
-These datapoint id's will be used in the plugin general parameter __Mode2__.
+These datapoint id's will be used in the plugin general parameter **Mode2**.
 
 ### Test Changing Setpoint
 Test changing the setpoint of the datapoint 1584, via webbrowser HTTP URL XML-API request using the statechange.cgi script with the datapoint id and new value.
 Change setpoint to 20 C
+**HTTP XML-API Request**
 ``` 
 http://ccu-ip-address/config/xmlapi/statechange.cgi?ise_id=1584&new_value=20
 ``` 
-The HTTP response is an XML string.
-_Example_
+**HTTP XML-API Response**
 ``` 
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <result>
 <changed id="1584" new_value="20"/>
-</result>``` 
+</result>
+``` 
+
 To switch the thermostat OFF, set the new value to 0:
 ``` 
 http://ccu-ip-address/config/xmlapi/statechange.cgi?ise_id=1584&new_value=0
 ``` 
-
-_Note_
 Check the HomeMatic WebUI if the state of the channel has changed as well.
-
-<ADD SCREENSHOT>
 
 ## Domoticz Devices
 The **Domoticz homematicIP Radiator Thermostat** devices created are Hardware - Name (Type,SubType).
@@ -212,7 +214,7 @@ Example for new Domotcz hardware named "Thermostat MakeLab":
 ![domoticz-plugin-HMIP-eTRV-2-d](https://user-images.githubusercontent.com/47274144/60536568-ce6b1680-9d06-11e9-98d0-f482067f062f.png)
 
 ## Plugin Pseudo Code
-Source code (well documented): plugin.py in folder /home/pi/domoticz/plugins/hmip-etrv
+Source code (well documented): plugin.py
 __INIT__
 * set self vars to handle http connection, heartbeat count, datapoints list, switch state, set task
 	
@@ -239,7 +241,6 @@ Restart Domoticz to find the plugin:
 ```
 sudo systemctl restart domoticz.service
 ```
-
 **Note**
 When making changes to the Python plugin code, ensure to restart Domoticz and refresh any of the Domoticz Web UI's.
 This is the iteration process during development - build the solution step-by-step.
@@ -251,8 +252,10 @@ If this option is not enabled, no new devices are created.
 Check the GUI > Setup > Log as error message Python script at the line where the new device is used
 (i.e. Domoticz.Debug("Device created: "+Devices[1].Name))
 
-In the GUI > Setup > Hardware add the new hardware **homematicIP RadiaorThermostat (HMIP-eTRV)**.
+In the GUI > Setup > Hardware add the new hardware **homematicIP Radiator Thermostat (HMIP-eTRV)**.
 The initial check interval is set at 60 seconds. This is a good value for testing, but for final version set to higher value like every 5 minutes (300 seconds).
+
+![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70860863-45980e00-1f27-11ea-89b7-a84367ca9746.png)
 
 ## Add Hardware - Check the Domoticz Log
 After adding, ensure to check the Domoticz Log (GUI > Setup > Log)
