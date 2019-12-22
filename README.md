@@ -25,11 +25,13 @@ This plugin creates the Domoticz Devices (Type,SubType):
 * Valve (General,Percentage)
 
 ### Hardware
-![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
+![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/71325222-e79c9500-24e9-11ea-9d56-d27bc31a4c29.png)
+
 ### Devices
-![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/70861021-04086280-1f29-11ea-83ca-37c2da9e2ce2.png)
+![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/71325221-e703fe80-24e9-11ea-8c52-2a95326b8269.png)
+
 ### Communication
-![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
+![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/71325220-e703fe80-24e9-11ea-9ab0-e6bf65378c79.png)
 
 ## Hardware
 * Raspberry Pi 3B+ (RaspberryMatic System)
