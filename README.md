@@ -1,11 +1,12 @@
 # Domoticz Plugin homematicIP Radiator Thermostat (HmIP-eTRV-B & HmIP-eTRV-2)
-v1.0 (Build 20191214)
+v1.2.0 (Build 20191222)
 
 # Objectives
 Control, via Domoticz Homeautomation System, the homematicIP Radiator Thermostats HmIP-eTRV-B & HmIP-eTRV-2 connected to a RaspberryMatic CCU:
 * set the temperature setpoint (SET_POINT_TEMPERATURE)
 * get the room temperature (ACTUAL_TEMPERATURE)
 * get the low battery status (LOW_BAT)
+* get the valve position (LEVEL)
 
 _Abbreviations_: GUI=Domoticz Web UI, CCU=HomeMatic Central-Control-Unit
 
@@ -21,6 +22,7 @@ This plugin creates the Domoticz Devices (Type,SubType):
 * Setpoint (Thermostat,Setpoint)
 * Temperature (Temp,LaCrosse TX3)
 * Battery (General,Alert)
+* Valve (General,Percentage)
 
 ### Hardware
 ![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
@@ -108,12 +110,12 @@ The device datapoint id will be used in the plugin general parameter **Mode1**.
 
 ### Get Device Channels
 Get the device channel or name from the HomeMatic WebUI > Status and control > Devices > select name. Example default name=HMIP-eTRV-2 000A18A9A64DAC or renamed=Thermostat MakeLab
-Select channel 000A18A9A64DAC:1 (get this from the HomeMatic WebUI or via XML-API statelist request http://ccu-ip-address/config/xmlapi/statelist.cgi )
+Select channel 000A18A9A64DAC:1 (get this from the HomeMatic WebUI or via XML-API statelist request http://ccu-ip-address/addons/xmlapi/statelist.cgi )
 
 ### Get All Devices Statelist
 Submit in a webbrowser the HTTP URL XMLAPI request:
 ``` 
-http://ccu-ip-address/config/xmlapi/statelist.cgi
+http://ccu-ip-address/addons/xmlapi/statelist.cgi
 ``` 
 The HTTP response is an XML string with the state list for all devices used (can be rather large depending number of devices connected).
 
@@ -123,7 +125,7 @@ From the HTTP XML-API response, search for the device name and otain the device 
 ### Get Device Datapoints
 **HTTP XML-API request** URL using the state script and device id (ise_id) as parameter.
 ``` 
-http://ccu-ip-address/config/xmlapi/state.cgi?device_id=1541
+http://ccu-ip-address/addons/xmlapi/state.cgi?device_id=1541
 ``` 
 **HTTP XML-API Response**
 ``` 
@@ -180,6 +182,7 @@ Get the datapoint IDs required for the plugin:
 * LOW_BAT, id=1549 - used to check low battery state via alert level=1(green) or 4(red) and sent notification if alert level 4.
 * ACTUAL_TEMPERATURE, id=1567 - used to get the room temperature.
 * SET_POINT_TEMPERATURE, id=1584 - used to change the setpoint via Domoticz Thermostat device.
+* LEVEL, id=1576 - used to show the valve position 0 - 100%.
 These datapoint id's will be used in the plugin general parameter **Mode2**.
 
 ### Test Changing Setpoint
@@ -187,7 +190,7 @@ Test changing the setpoint of the datapoint 1584, via webbrowser HTTP URL XML-AP
 Change setpoint to 20 C
 **HTTP XML-API Request**
 ``` 
-http://ccu-ip-address/config/xmlapi/statechange.cgi?ise_id=1584&new_value=20
+http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=20
 ``` 
 **HTTP XML-API Response**
 ``` 
@@ -199,7 +202,7 @@ http://ccu-ip-address/config/xmlapi/statechange.cgi?ise_id=1584&new_value=20
 
 To switch the thermostat OFF, set the new value to 0:
 ``` 
-http://ccu-ip-address/config/xmlapi/statechange.cgi?ise_id=1584&new_value=0
+http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=0
 ``` 
 Check the HomeMatic WebUI if the state of the channel has changed as well.
 
@@ -285,6 +288,8 @@ Example:
 2019-12-14 12:40:09.814 (MakeLab Thermostat) Device created: MakeLab Thermostat - Temperature 
 2019-12-14 12:40:09.815 (MakeLab Thermostat) Creating device 'Battery'. 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Device created: MakeLab Thermostat - Battery 
+2019-12-14 12:40:09.816 (MakeLab Thermostat) Creating new devices: OK 
+2019-12-14 12:40:09.816 (MakeLab Thermostat) Device created: MakeLab Thermostat - Valve
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Creating new devices: OK 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Heartbeat set: 60 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Pushing 'PollIntervalDirective' on to queue 
