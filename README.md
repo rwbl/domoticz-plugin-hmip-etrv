@@ -1,5 +1,5 @@
 # Domoticz Plugin homematicIP Radiator Thermostat (HmIP-eTRV-B & HmIP-eTRV-2)
-v1.2.0 (Build 20191222)
+See changelog
 
 # Objectives
 Control, via Domoticz Homeautomation System, the homematicIP Radiator Thermostats HmIP-eTRV-B & HmIP-eTRV-2 connected to a RaspberryMatic CCU:
@@ -7,6 +7,7 @@ Control, via Domoticz Homeautomation System, the homematicIP Radiator Thermostat
 * get the room temperature (ACTUAL_TEMPERATURE)
 * get the low battery status (LOW_BAT)
 * get the valve position (LEVEL)
+* set the profile (ACTIVE_PROFILE)
 
 _Abbreviations_: GUI=Domoticz Web UI, CCU=HomeMatic Central-Control-Unit
 
@@ -23,15 +24,14 @@ This plugin creates the Domoticz Devices (Type,SubType):
 * Temperature (Temp,LaCrosse TX3)
 * Battery (General,Alert)
 * Valve (General,Percentage)
+* Profile (Light/Switch,Switch,Selector)
 
 ### Hardware
-![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/71325222-e79c9500-24e9-11ea-9d56-d27bc31a4c29.png)
-
+![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
 ### Devices
-![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/71325221-e703fe80-24e9-11ea-8c52-2a95326b8269.png)
-
+![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/70861021-04086280-1f29-11ea-83ca-37c2da9e2ce2.png)
 ### Communication
-![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/71325220-e703fe80-24e9-11ea-9ab0-e6bf65378c79.png)
+![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
 
 ## Hardware
 * Raspberry Pi 3B+ (RaspberryMatic System)
@@ -185,11 +185,12 @@ Get the datapoint IDs required for the plugin:
 * ACTUAL_TEMPERATURE, id=1567 - used to get the room temperature.
 * SET_POINT_TEMPERATURE, id=1584 - used to change the setpoint via Domoticz Thermostat device.
 * LEVEL, id=1576 - used to show the valve position 0 - 100%.
+* ACTIVE_PROFILE, id=1566 - used to select the profile 1=winter (level=10),2=summer (level=20).
 These datapoint id's will be used in the plugin general parameter **Mode2**.
 
 ### Test Changing Setpoint
 Test changing the setpoint of the datapoint 1584, via webbrowser HTTP URL XML-API request using the statechange.cgi script with the datapoint id and new value.
-Change setpoint to 20 C
+Change setpoint to 20 C:
 **HTTP XML-API Request**
 ``` 
 http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=20
@@ -197,9 +198,7 @@ http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=20
 **HTTP XML-API Response**
 ``` 
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<result>
-<changed id="1584" new_value="20"/>
-</result>
+<result><changed id="1584" new_value="20"/></result>
 ``` 
 
 To switch the thermostat OFF, set the new value to 0:
@@ -208,13 +207,27 @@ http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=0
 ``` 
 Check the HomeMatic WebUI if the state of the channel has changed as well.
 
+### Test Changing Profile
+Text changing the profile of the datapoint 1566, via webbrowser HTTP URL XML-API request using the statechange.cgi script with the datapoint id and new value.
+Change profile to 2:
+**HTTP XML-API Request**
+``` 
+http://ccu-ip-address/addons/xmlapi/statechange.cgi?ise_id=1566&new_value=2
+``` 
+**HTTP XML-API Response**
+``` 
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<result> <changed id="1566" new_value="2"/></result>
+``` 
+
 ## Domoticz Devices
 The **Domoticz homematicIP Radiator Thermostat** devices created are Hardware - Name (Type,SubType).
-Example for new Domotcz hardware named "Thermostat MakeLab":
+Example for new Domoticz hardware named "Thermostat MakeLab":
 * Thermostat MakeLab - Setpoint (Thermostat, SetPoint)
 * Thermostat MakeLab - Temperature (Temp, LaCrosse TX3)
 * Thermostat MakeLab - Battery (General, Alert)
-
+* Thermostat MakeLab - Level (General, Percentage)
+* Thermostat MakeLab - Profile (Light/Switch,Switch,Selector)
 
 ## Plugin Pseudo Code
 Source code (well documented): plugin.py
@@ -234,8 +247,10 @@ __NEXT TIME(S)__
 	* parse the xml response
 	* if task setpointtemperature update the setpoint and sent http xml-api request to the CCU
 	* if task getdatapoints update temperature & battery device
+	* if task setprofile update profile device
 * _onCommand_
-	* set task setpointtemperature and create ip connection which is handled by onConnect
+	* if unit=setpointtemperature then set task setpointtemperature and create ip connection which is handled by onConnect
+	* if unit=profile then set task activeprofile and create ip connection which is handled by onConnect
 
 If required, add the devices manually to the Domoticz Dashboard or create a roomplan / floorplan.
 
@@ -280,22 +295,20 @@ Example:
 2019-12-14 12:40:09.812 (MakeLab Thermostat) 'HardwareID':'10' 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) 'DomoticzBuildTime':'2019-12-13 16:35:55' 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) 'StartupFolder':'/home/pi/domoticz/' 
-2019-12-14 12:40:09.812 (MakeLab Thermostat) 'Mode2':'1584,1567,1549' 
+2019-12-14 12:40:09.812 (MakeLab Thermostat) 'Mode2':'1584,1567,1549,1576,1566' 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) 'Port':'0' 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) Device count: 0 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) Creating new devices ... 
 2019-12-14 12:40:09.812 (MakeLab Thermostat) Creating device 'Setpoint'. 
 2019-12-14 12:40:09.813 (MakeLab Thermostat) Device created: MakeLab Thermostat - Setpoint 
-2019-12-14 12:40:09.814 (MakeLab Thermostat) Creating device 'Temperature'. 
 2019-12-14 12:40:09.814 (MakeLab Thermostat) Device created: MakeLab Thermostat - Temperature 
-2019-12-14 12:40:09.815 (MakeLab Thermostat) Creating device 'Battery'. 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Device created: MakeLab Thermostat - Battery 
-2019-12-14 12:40:09.816 (MakeLab Thermostat) Creating new devices: OK 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Device created: MakeLab Thermostat - Valve
+2019-12-14 12:40:09.816 (MakeLab Thermostat) Device created: MakeLab Thermostat - Profile
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Creating new devices: OK 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Heartbeat set: 60 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Pushing 'PollIntervalDirective' on to queue 
-2019-12-14 12:40:09.816 (MakeLab Thermostat) Datapoints:1584,1567,1549 
+2019-12-14 12:40:09.816 (MakeLab Thermostat) Datapoints:1584,1567,1549,1576,1566
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Processing 'PollIntervalDirective' message 
 2019-12-14 12:40:09.816 (MakeLab Thermostat) Heartbeat interval set to: 60. 
 2019-12-14 12:40:09.212 Status: (MakeLab Thermostat) Started. 
@@ -307,7 +320,12 @@ Example:
 The plugin runs every 60 seconds (Heartbeat interval) which is shown in the Domoticz log.
 Note: The thermostat is turned off - displays OFF, but has auto setpoint of 4.5.
 ```
-2019-12-14 16:58:45.131 (MakeLab Thermostat) T=19.9,S=4.5
+2020-03-12 13:14:18.804 (Thermostat WZ-1) TASKGETDATAPOINTS:HMIP-eTRV:T=21.9, SP=21.0, B=false, L=61.0, P=1 
+2020-03-12 13:14:18.870 (Thermostat Dusche) TASKGETDATAPOINTS:HMIP-eTRV:T=16.9, SP=6.0, B=false, L=0.0, P=1 
+2020-03-12 13:14:18.877 (Thermostat Flur) TASKGETDATAPOINTS:HMIP-eTRV:T=22.8, SP=21.0, B=false, L=32.0, P=1 
+2020-03-12 13:14:18.884 (Thermostat WZ-2) TASKGETDATAPOINTS:HMIP-eTRV:T=22.0, SP=21.0, B=false, L=79.0, P=1 
+2020-03-12 13:14:18.889 (Thermostat Bad) TASKGETDATAPOINTS:HMIP-eTRV:T=21.6, SP=20.0, B=false, L=0.0, P=1 
+2020-03-12 13:14:18.943 (Thermostat EZ) TASKGETDATAPOINTS:HMIP-eTRV:T=23.2, SP=21.0, B=false, L=32.0, P=1 
 ```
 
 ## ToDo

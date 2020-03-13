@@ -1,4 +1,7 @@
-## Domoticz Plugin Radiator Thermostat HmIP-eTRV-B & HmIP-eTRV-B
+# Changelog domoticz-plugin-hmip-etrv
+
+### v1.3.0 (Buld 20200312)
+* NEW: Profile selection 1=Winter,2=Summer
 
 ### v1.2.1 (Build 20191223)
 * NEW: Domoticz log entry on every change.

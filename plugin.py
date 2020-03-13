@@ -4,6 +4,7 @@
 #   * get the actual temperature
 #   * get the low batery state
 #   * get the valve position
+#   * set the active profile
 # NOTES:
 # 1. After every change run: sudo service domoticz.sh restart
 # 2. Change user message for battery state in constants LOWBATMSG...
@@ -13,7 +14,7 @@
 # Version: See plugin xml definition
 
 """
-<plugin key="HMIP-eTRV" name="homematicIP Radiator Thermostat (HmIP-eTRV)" author="rwbL" version="1.2.1 (Build 20191223)">
+<plugin key="HMIP-eTRV" name="homematicIP Radiator Thermostat (HmIP-eTRV)" author="rwbL" version="1.3.0 (Build 20200312)">
     <description>
         <h2>homematicIP Radiator Thermostat (HMIP-eTRV) v1.2.1</h2>
         <ul style="list-style-type:square">
@@ -21,6 +22,7 @@
             <li>Get the actual temperature (degrees C).</li>
             <li>Get the low battery state (true or false). Threshold is set in the HomeMatic WebUI</li>
             <li>Get the valve position (0 - 100%).</li>
+            <li>Set the active profile.</li>
             <li>Supported are the devices HmIP-eTRV-B, HmIP-eTRV-2</li>
         </ul>
         <h2>Domoticz Devices (Type,SubType)</h2>
@@ -29,6 +31,7 @@
             <li>Temperature (Temp,LaCrosse TX3)</li>
             <li>Battery (General,Alert)</li>
             <li>Valve (General,Percentage)</li>
+            <li>Profile (Light/Switch,Switch,Selector)</li>
         </ul>
         <h2>Hardware Configuration</h2>
         <ul style="list-style-type:square">
@@ -36,7 +39,7 @@
             <li>IDs (obtained via XML-API script http://ccu-ip-address/addons/xmlapi/statelist.cgi):</li>
             <ul style="list-style-type:square">
                 <li>Device ID HmIP-eTRV-B or HmIP-eTRV-2 (default: 1541)</li>
-                <li>Datapoint IDs(#4): SET_POINT_TEMPERATURE, ACTUAL_TEMPERATURE, LOW_BAT, LEVEL as comma separated list in this order (defaults: 1584,1567,1549,1576)</li>
+                <li>Datapoint IDs(#5): SET_POINT_TEMPERATURE, ACTUAL_TEMPERATURE, LOW_BAT, LEVEL, ACTIVE_PROFILE as comma separated list in this order (defaults:1584,1567,1549,1576,1566)</li>
             </ul>
             <li>Note: After configuration update, the setpoint is 0. Click the setpoint to set the value.</li>
         </ul>
@@ -44,7 +47,7 @@
     <params>
         <param field="Address" label="CCU IP" width="200px" required="true" default="192.168.1.225"/>
         <param field="Mode1" label="Device ID" width="75px" required="true" default="1541"/>
-        <param field="Mode2" label="Datapoint IDs" width="150px" required="true" default="1584,1567,1549,1576"/>
+        <param field="Mode2" label="Datapoint IDs" width="200px" required="true" default="1584,1567,1549,1576,1566"/>
         <param field="Mode5" label="Check Interval (sec)" width="75px" required="true" default="60"/>
         <param field="Mode6" label="Debug" width="75px">
             <options>
@@ -73,9 +76,10 @@ UNITSETPOINTTEMPERATURE = 1 # TypeName: N/A; Type ID:242 (Name:Thermostat); SubT
 UNITACTUALTEMPERATURE = 2   # TypeName: Temperature
 UNITLOWBAT = 3              # TypeName: Alert
 UNITLEVEL = 4               # TypeName: Percentage
+UNITACTIVEPROFILE = 5       # TypeName: Selector Switch
 
 # Number of datapoints = must match number of index defined below
-DATAPOINTS = 4
+DATAPOINTS = 5
 
 # Index of the datapoints from the datapoints list
 # The datapoints are defined as a comma separated string in parameter Mode2
@@ -84,16 +88,19 @@ DATAPOINTINDEXSETPOINTTEMPERATURE = 0
 DATAPOINTINDEXACTUALTEMPERATURE = 1
 DATAPOINTINDEXLOWBAT = 2
 DATAPOINTINDEXLEVEL = 3
+DATAPOINTINDEXACTIVEPROFILE = 4
 
 # Tasks to perform
 ## Change the setpoint
 TASKSETPOINTTEMPERATURE = 1 
 ## Get values from the datapoints ACTUAL_TEMPERATURE, LOW_BAT, LEVEL
 TASKGETDATAPOINTS = 2
+## Set the active profile
+TASKSETACTIVEPROFILE = 3
 
 # User Messages
-LOWBATMSGOK = "Batteriestand Ok"
-LOWBATMSGNOK = "Batteriestand niedrig!"
+LOWBATMSGOK = "OK"
+LOWBATMSGNOK = "Niedrig!"
 
 class BasePlugin:
 
@@ -102,7 +109,7 @@ class BasePlugin:
         self.httpConn = None
         self.httpConnected = 0
         
-        # List of datapoints (#3) - SET_POINT_TEMPERATURE, ACTUAL_TEMPERATURE, LOW_BAT
+        # List of datapoints (#4) - SET_POINT_TEMPERATURE, ACTUAL_TEMPERATURE, LOW_BAT, ACTIVE_PROFILE
         self.DatapointsList = []
 
         # Task to complete - default is get the datapoints
@@ -113,6 +120,7 @@ class BasePlugin:
         self.Temperature = 0    # actual temperature
         self.LowBat = "true"    # low battery "true" or "false"
         self.Level = 0          # valve position 0 - 100%
+        self.Profile = 0        # active profile 1 - 3 - init with 0 to ensure getting the value ser first time
                
         # The Domoticz heartbeat is set to every 60 seconds. Do not use a higher value as Domoticz message "Error: hardware (N) thread seems to have ended unexpectedly"
         # The plugin heartbeat is set in Parameter.Mode5 (seconds). This is determined by using a hearbeatcounter which is triggered by:
@@ -125,6 +133,7 @@ class BasePlugin:
         Domoticz.Debug(PLUGINSHORTDESCRIPTON + " " + PLUGINVERSION)
         Domoticz.Debug("onStart called")
         Domoticz.Debug("Debug Mode:" + Parameters["Mode6"])
+        Domoticz.Debug("Devices:" + str(len(Devices)) )
 
         if Parameters["Mode6"] == "Debug":
             self.debug = True
@@ -133,25 +142,35 @@ class BasePlugin:
 
         # if there no devices, create these
         if (len(Devices) == 0):
-            Domoticz.Debug("Creating new devices ...")
-            
-            ## SET_POINT_TEMPERATURE - TypeName: Thermostat
-            Domoticz.Device(Name="Setpoint", Unit=UNITSETPOINTTEMPERATURE, Type=242, Subtype=1, Used=1).Create()
-            Domoticz.Debug("Device created: "+Devices[UNITSETPOINTTEMPERATURE].Name)
+            try:
+                Domoticz.Debug("Creating new devices ...")
+                
+                ## 1 - SET_POINT_TEMPERATURE - TypeName: Thermostat
+                Domoticz.Device(Name="Setpoint", Unit=UNITSETPOINTTEMPERATURE, Type=242, Subtype=1, Used=1).Create()
+                Domoticz.Debug("Device created: "+Devices[UNITSETPOINTTEMPERATURE].Name)
 
-            ## ACTUAL_TEMPERATURE - TypeName: Temperature
-            Domoticz.Device(Name="Temperature", Unit=UNITACTUALTEMPERATURE, TypeName="Temperature", Used=1).Create()
-            Domoticz.Debug("Device created: "+Devices[UNITACTUALTEMPERATURE].Name)
+                ## 2 - ACTUAL_TEMPERATURE - TypeName: Temperature
+                Domoticz.Device(Name="Temperature", Unit=UNITACTUALTEMPERATURE, TypeName="Temperature", Used=1).Create()
+                Domoticz.Debug("Device created: "+Devices[UNITACTUALTEMPERATURE].Name)
 
-            ## LOW_BAT - TypeName: Alert
-            Domoticz.Device(Name="Battery", Unit=UNITLOWBAT, TypeName="Alert", Used=1).Create()
-            Domoticz.Debug("Device created: "+Devices[UNITLOWBAT].Name)
+                ## 3 - LOW_BAT - TypeName: Alert
+                Domoticz.Device(Name="Battery", Unit=UNITLOWBAT, TypeName="Alert", Used=1).Create()
+                Domoticz.Debug("Device created: "+Devices[UNITLOWBAT].Name)
 
-            ## LEVEL - TypeName: Percentage
-            Domoticz.Device(Name="Valve", Unit=UNITLEVEL, TypeName="Percentage", Used=1).Create()
-            Domoticz.Debug("Device created: "+Devices[UNITLEVEL].Name)
+                ## 4 - LEVEL - TypeName: Percentage
+                Domoticz.Device(Name="Valve", Unit=UNITLEVEL, TypeName="Percentage", Used=1).Create()
+                Domoticz.Debug("Device created: "+Devices[UNITLEVEL].Name)
 
-            Domoticz.Debug("Creating new devices: OK")
+                ## 5 - ACTIVE_PROFILE - TypeName: Selector Switch
+                Options = {"LevelActions": "|||",
+                      "LevelNames": "Off|1|2|3",
+                      "LevelOffHidden": "true",
+                      "SelectorStyle": "0"}
+                Domoticz.Device(Name="Profile", Unit=UNITACTIVEPROFILE, TypeName="Selector Switch",  Options=Options, Used=1).Create()            
+
+                Domoticz.Debug("Creating new devices: OK")
+            except:
+                Domoticz.Error("[ERROR] Creating new devices: Failed. Check settings if new hardware allowed")
         else:
             # NOT USED - if there are devices, go for sure and update options. Exampe selector switch
             # Options = { "LevelActions": "", "LevelNames": Parameters["Mode3"], "LevelOffHidden": "false", "SelectorStyle": "0" }
@@ -191,10 +210,15 @@ class BasePlugin:
                 ## url example = 'http://192.168.1.225/addons/xmlapi/state.cgi?device_id=' .. ID_DEVICE;
                 url = '/addons/xmlapi/state.cgi?device_id=' + Parameters["Mode1"]
                 
-            # set the new setpoitnt
+            # set the new setpoint
             if self.Task == TASKSETPOINTTEMPERATURE:
                 ## url example = 'http://192.168.1.225/addons/xmlapi/statechange.cgi?ise_id=1584&new_value=
                 url = '/addons/xmlapi/statechange.cgi?ise_id=' + self.DatapointsList[DATAPOINTINDEXSETPOINTTEMPERATURE] + '&new_value=' + str(self.SetPoint)
+
+            # set the new profile
+            if self.Task == TASKSETACTIVEPROFILE:
+                ## url example = 'http://192.168.1.225/addons/xmlapi/statechange.cgi?ise_id=1566&new_value=
+                url = '/addons/xmlapi/statechange.cgi?ise_id=' + self.DatapointsList[DATAPOINTINDEXACTIVEPROFILE] + '&new_value=' + str(self.Profile)
 
             Domoticz.Debug(url)
             # define the senddata parameters (JSON)
@@ -213,7 +237,7 @@ class BasePlugin:
             return
         else:
             self.httpConnected = 0
-            Domoticz.Log("Failed to connect ("+str(Status)+") to: "+Parameters["Address"]+":"+Parameters["Port"]+" with error: "+Description)
+            Domoticz.Error("[ERROR] Failed to connect ("+str(Status)+") to: "+Parameters["Address"]+":"+Parameters["Port"]+" with error: "+Description)
             return
 
     def onMessage(self, Connection, Data):
@@ -226,8 +250,8 @@ class BasePlugin:
         # Parse the JSON Data Object with keys Status (Number) and Data (ByteArray)
         ## 200 is OK
         responseStatus = int(Data["Status"])
-        ## Domoticz.Debug("STATUS="+ str(responseStatus))
-        
+        Domoticz.Debug("STATUS=responseStatus:" + str(responseStatus) + " ;Data[Status]="+Data["Status"])
+
         ## decode the data using the encoding as given in the xml response string
         responseData = Data["Data"].decode('ISO-8859-1')
         ## Domoticz.Debug("DATA=" + responseData)
@@ -249,6 +273,7 @@ class BasePlugin:
             spvrm = 0.0     #setpointvalueraspberrymatic
             spvdom = 0.0    #setpointvaluedomoticz
             lvlv = 0        #levelvalue
+            pv = 0          #profilevalue
                         
             # Get the value for datapoint actual_temperature & update the device and log
             ## note that a list is returned from tree.xpath, but holds only 1 value
@@ -301,28 +326,64 @@ class BasePlugin:
                     Domoticz.Debug("L Update=" + Devices[UNITLEVEL].sValue)
                 self.Level = lvlv
 
-            Domoticz.Log(Parameters["Key"] + ":T=" + str(atv) + ", SP=" + str(spvrm) + ", B=" + lbv + ", L=" + str(lvlv))
+            # Get the value for datapoint active_profile & update the device and log
+            profile = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXACTIVEPROFILE] + ']/@value')   
+            if len(profile) == 1:
+                ## Active profile: 1-3; store the active profile
+                ## update the device if raspmatic value not equal domoticz value
+                ## the nvalue must be 2 to ensure the selector is on
+                ## the svalue is the level between 10 - 30, means the profile 1 - 3 needs to be converted to 10 -30
+                pv = int(profile[0])
+                if pv != self.Profile:
+                    Devices[UNITACTIVEPROFILE].Update( nValue=2, sValue=str(pv * 10) )
+                    Domoticz.Debug("P Update=" + Devices[UNITACTIVEPROFILE].sValue)
+                self.Profile = pv
+
+            Domoticz.Log("TASKGETDATAPOINTS:" + Parameters["Key"] + ":T=" + str(atv) + ", SP=" + str(spvrm) + ", B=" + lbv + ", L=" + str(lvlv) + ", P=" + str(pv) )
             
         if self.Task == TASKSETPOINTTEMPERATURE:
             Domoticz.Debug("TASKSETPOINTTEMPERATURE")
             # Update the thermostat
             Devices[UNITSETPOINTTEMPERATURE].Update( nValue=1, sValue= str(self.SetPoint) )    
             # NOT REQUIRED = Devices[UNITSETPOINTTEMPERATURE].Refresh()    
+
+        if self.Task == TASKSETACTIVEPROFILE:
+            Domoticz.Debug("TASKSETACTIVEPROFILE")
+            # Update the profile selector switch
+            Devices[UNITACTIVEPROFILE].Update( nValue=2, sValue= str(self.Profile * 10) )    
+            # NOT REQUIRED = Devices[UNITACTIVEPROFILE].Refresh()    
         return
 
+    # Handle oncomand for:
     # Set the setpoint - Create http connection, the setpoint is set in onConnect
+    # Set the active profile
     def onCommand(self, Unit, Command, Level, Hue):
-        # onCommand called for Unit 1: Parameter 'Set Level', Level: 18.5
-        Domoticz.Debug("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
+        # onCommand called. Example:
+        # Unit 1 - UNITSETPOINTTEMPERATURE: Parameter: 'Set Level', Level: 18.5
+        # Unit 5 - UNITACTIVEPROFILE: Parameter: 'Set Level', Level: 20
+        Domoticz.Log("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
 
-        ## Set the new setpoint temperature
-        self.SetPoint = Level
-        Domoticz.Debug("T Setpoint=" + str(self.SetPoint))
-        # Create IP connection and connect - see further onConnect where the parameters are send
-        self.httpConn = Domoticz.Connection(Name="CCU-"+Parameters["Address"], Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port="80")
-        self.httpConn.Connect()
-        self.httpConnected = 0
-        self.Task = TASKSETPOINTTEMPERATURE
+        if (Unit == UNITSETPOINTTEMPERATURE):
+            ## Set the new setpoint temperature
+            self.SetPoint = Level
+            Domoticz.Debug("T Setpoint=" + str(self.SetPoint))
+            # Create IP connection and connect - see further onConnect where the parameters are send
+            self.httpConn = Domoticz.Connection(Name="CCU-"+Parameters["Address"], Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port="80")
+            self.httpConn.Connect()
+            self.httpConnected = 0
+            self.Task = TASKSETPOINTTEMPERATURE
+
+        if (Unit == UNITACTIVEPROFILE):
+            ## Set the new profile - the level is between 10 - 30, which must be converted to profile 1 - 3 (int therefor round)
+            if (Level > 0):
+                self.Profile = round(Level / 10)
+                Domoticz.Debug("P Profile=" + str(self.Profile))
+                # Create IP connection and connect - see further onConnect where the parameters are send
+                self.httpConn = Domoticz.Connection(Name="CCU-"+Parameters["Address"], Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port="80")
+                self.httpConn.Connect()
+                self.httpConnected = 0
+                self.Task = TASKSETACTIVEPROFILE
+
         return
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):

@@ -1,9 +1,29 @@
-### Status 20191214
+# ToDo domoticz-plugin-hmip-etrv
+Status 20200128
 
-#### NEW: Sync state when changed in HomeMatic WebUI
+### FIX: onMessage TypeError
+Understand this error message and seek a fix.
+```
+2020-01-21 19:57:22.685 Error: (Thermostat WZ-1) 'onMessage' failed 'TypeError':'byte indices must be integers or slices, not str'. 
+2020-01-21 19:57:22.685 Error: (Thermostat WZ-1) ----> Line 367 in '/home/pi/domoticz/plugins/hmip-etrv/plugin.py', function onMessage 
+2020-01-21 19:57:22.685 Error: (Thermostat WZ-1) ----> Line 228 in '/home/pi/domoticz/plugins/hmip-etrv/plugin.py', function onMessage
+```
+Line 228 in onMessage is:
+```
+def onMessage(self, Connection, Data):
+	# Parse the JSON Data Object with keys Status (Number) and Data (ByteArray)
+    ## 200 is OK
+    responseStatus = int(Data["Status"])
+```
+
+_Status_
+Not started.
+
+### NEW: Sync state when changed in HomeMatic WebUI
 A solution is implemented where Domoticz is triggering requesting the state from the CCU.
 This is done during the check interval to update setpoint and temperature data.
 Seeking for a solution where the CCU triggers the update of the Domoticz device(s).
+
 _Status_
 It is advised by RaspberryMatic to use the addon CUxD.
 Tested an example to update a domoticz text device via CUxD device (remote control)
@@ -45,26 +65,30 @@ else {
 ! WriteLine("VT="#dl.VarType());  ! VT=9
 ! WriteLine(dl.Variable());       ! shows the last update string
 ```
+
 _Status_
 Not started.
 
-##### NEW: Change Profile
-Change the profile:
+#### NEW: Change Active Profile
+Change the active profile as defined by this datapoint:
 ```
 <datapoint ise_id="1566" name="HmIP-RF.000A18A9A64DAC:1.ACTIVE_PROFILE" operations="7" timestamp="1562422330" valueunit="" valuetype="16" value="1" type="ACTIVE_PROFILE"/>
 ```
+Solution option:
 Domoticz Device: Selector Switch
-Taken from the datasheet: Up to three adjustable week profiles:
+Taken from the datasheet: Up to three adjustable week profiles.
 The room temperature can be adjusted according to individually tailored heating phases (up to 6 per day with configurable temperature)
 The temperature can automatically be reduced during 
+
 _Status_
 Not started.
 
-##### NEW: Valve Level
+#### NEW: Valve Level
 Show the valve level
 ```
 <datapoint ise_id="1576" name="HmIP-RF.000A18A9A64DAC:1.LEVEL" operations="7" timestamp="1562415475" valueunit="" valuetype="4" value="0.000000" type="LEVEL"/>
 ```
 Domoticz Device: Slider or Text or TBD
+
 _Status_
 Not started.
