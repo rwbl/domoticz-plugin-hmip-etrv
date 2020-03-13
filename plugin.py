@@ -16,7 +16,7 @@
 """
 <plugin key="HMIP-eTRV" name="homematicIP Radiator Thermostat (HmIP-eTRV)" author="rwbL" version="1.3.0 (Build 20200312)">
     <description>
-        <h2>homematicIP Radiator Thermostat (HMIP-eTRV) v1.2.1</h2>
+        <h2>homematicIP Radiator Thermostat (HMIP-eTRV) v1.3.0</h2>
         <ul style="list-style-type:square">
             <li>Set the setpoint (degrees C).</li>
             <li>Get the actual temperature (degrees C).</li>
@@ -35,7 +35,7 @@
         </ul>
         <h2>Hardware Configuration</h2>
         <ul style="list-style-type:square">
-            <li>Address (CCU IP address, default: 192.168.1.225)</li>
+            <li>Address (CCU IP address, default: ccu-ip-address)</li>
             <li>IDs (obtained via XML-API script http://ccu-ip-address/addons/xmlapi/statelist.cgi):</li>
             <ul style="list-style-type:square">
                 <li>Device ID HmIP-eTRV-B or HmIP-eTRV-2 (default: 1541)</li>
@@ -45,7 +45,7 @@
         </ul>
     </description>
     <params>
-        <param field="Address" label="CCU IP" width="200px" required="true" default="192.168.1.225"/>
+        <param field="Address" label="CCU IP" width="200px" required="true" default="ccu-ip-address"/>
         <param field="Mode1" label="Device ID" width="75px" required="true" default="1541"/>
         <param field="Mode2" label="Datapoint IDs" width="200px" required="true" default="1584,1567,1549,1576,1566"/>
         <param field="Mode5" label="Check Interval (sec)" width="75px" required="true" default="60"/>
