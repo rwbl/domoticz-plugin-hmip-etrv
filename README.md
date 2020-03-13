@@ -1,7 +1,7 @@
 # Domoticz Plugin homematicIP Radiator Thermostat (HmIP-eTRV-B & HmIP-eTRV-2)
-See changelog
+Version see Changelog.
 
-# Objectives
+## Objectives
 Control, via Domoticz Homeautomation System, the homematicIP Radiator Thermostats HmIP-eTRV-B & HmIP-eTRV-2 connected to a RaspberryMatic CCU:
 * set the temperature setpoint (SET_POINT_TEMPERATURE)
 * get the room temperature (ACTUAL_TEMPERATURE)
@@ -27,11 +27,11 @@ This plugin creates the Domoticz Devices (Type,SubType):
 * Profile (Light/Switch,Switch,Selector)
 
 ### Hardware
-![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/70861022-066abc80-1f29-11ea-94c7-f83ca87aa403.png)
+![hmip-etrv-h](https://user-images.githubusercontent.com/47274144/76602041-737ef580-650a-11ea-812f-a3d0f5a89e52.png)
 ### Devices
-![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/70861021-04086280-1f29-11ea-83ca-37c2da9e2ce2.png)
+![hmip-etrv-d](https://user-images.githubusercontent.com/47274144/76602048-75e14f80-650a-11ea-9e08-acba484748b6.png)
 ### Communication
-![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/70860861-45980e00-1f27-11ea-977c-16f7c9953f4a.png)
+![hmip-etrv-c](https://user-images.githubusercontent.com/47274144/76602054-78dc4000-650a-11ea-8997-f9d171d62ca1.png)
 
 ## Hardware
 * Raspberry Pi 3B+ (RaspberryMatic System)
@@ -40,7 +40,7 @@ This plugin creates the Domoticz Devices (Type,SubType):
 ## Software
 Versions for developing & using this plugin.
 * Raspberry Pi Raspian  4.19.42-v7+ #1219
-* RaspberryMatic 3.47.22.20191130 [info](https://raspberrymatic.de/)
+* RaspberryMatic 3.51.6.20200229 [info](https://raspberrymatic.de/)
 * XML-API CCU Addon 1.20 [info](https://github.com/jens-maus/XML-API)
 * Python 3.5.3
 * Python library lxml XML toolkit 3.7.1-1 [info](https://lxml.de/)
@@ -48,31 +48,35 @@ Versions for developing & using this plugin.
 ## Prepare
 The RaspberryMatic system has been setup according [these](https://github.com/jens-maus/RaspberryMatic) guidelines.
 
-The XML-API CCU Addon is required and installed via the HomeMatic WebUI > Settings > Control panel > Additional software (see previous URL).
+The XML-API CCU Addon is required and installed via the HomeMatic WebUI > Settings > Control panel > Additional software
+(see previous URL).
 
 ### Python library lxml XML toolkit
 The Python library lxml XML toolkit is used to parse the XML-API response. 
-Install from the CLI:
+Install from the terminal command-line:
 ``` 
 sudo apt-get install python3-lxml
 ```
 _Note_
 If the plugin is added to the Domoticz Hardware without lxml installed, then delete the hardware prior installing lxml.
-After installing lxml, restart Domoticz: sudo service domoticz.sh restart
+After installing lxml, restart Domoticz:
+```
+sudo service domoticz.sh restart
+```
 
 ### Plugin Folder and File
 Each plugin requires a dedicated subfolder in the Domoticz plugins folder, which contains the plugin file __plugin.py__.
 ``` 
 mkdir /home/pi/domoticz/plugins/hmip-etrv
 ``` 
-Copy the file **plugin.py** to the newly created folder.
+Copy the file **plugin.py** to this folder.
 
 ### Restart Domoticz
-After adding the plugin, Domotcicz requirs a restart to recognize the new hardware.
+After adding the plugin, Domotcicz requires a restart to recognize the new hardware.
 ``` 
 sudo service domoticz.sh restart
 ``` 
-Check the Domoticz log if ok.
+Check the Domoticz log (GUI > Setup > Log) if the plugin is working ok.
 
 ## Development Setup
 Development PC:
@@ -97,13 +101,13 @@ The development process step used are:
 In the **GUI > Setup > Settings**, enable accepting new hardware.
 This is required to add new devices created by the plugin.
 
-Hint
+_Hint_
 For the development of a Python plugin, take (as a starter) the template from [here](https://github.com/domoticz/domoticz/blob/master/plugins/examples/BaseTemplate.py) .
 
 ## Datapoints
-To communicate between the CCU and Domoticz vv, the ise_id for a device, channel and datapoint are used (the id solution).
+To communicate between the CCU and Domoticz v.v., the ise_id for a device, channel and datapoint is used (the id solution).
 Another option could be to use the name (i.e. name="HmIP-RF.000A18A9A64DAC:1.SET_POINT_TEMPERATURE") but this requires to obtain the full device state list for every action.
-Tested the name solution, but the communication was rather slow and not the full HTTP response was loaded..
+Tested the name solution, but the communication was rather slow and not the full HTTP response was loaded.
 The id solution is much faster and also more flexible in defining and obtaning information for a device, channel and datapoint.
 
 ## Device Datapoint ID
@@ -185,7 +189,7 @@ Get the datapoint IDs required for the plugin:
 * ACTUAL_TEMPERATURE, id=1567 - used to get the room temperature.
 * SET_POINT_TEMPERATURE, id=1584 - used to change the setpoint via Domoticz Thermostat device.
 * LEVEL, id=1576 - used to show the valve position 0 - 100%.
-* ACTIVE_PROFILE, id=1566 - used to select the profile 1=winter (level=10),2=summer (level=20).
+* ACTIVE_PROFILE, id=1566 - used to select the profile 1=winter (Domoticz selector switch level=10),2=summer (level=20).
 These datapoint id's will be used in the plugin general parameter **Mode2**.
 
 ### Test Changing Setpoint
@@ -267,8 +271,10 @@ This is the iteration process during development - build the solution step-by-st
 **IMPORTANT**
 Prior adding, set the GUI > Settings option to allow new hardware.
 If this option is not enabled, no new devices are created.
-Check the GUI > Setup > Log for any error messages from the Python script at the line where the new device is used
-(i.e. Domoticz.Debug("Device created: "+Devices[1].Name))
+Check the GUI > Setup > Log for any error messages from the Python script at the line where the new device is used:
+```
+Domoticz.Debug("Device created: " + Devices[1].Name)
+```
 
 In the GUI > Setup > Hardware add the new hardware **homematicIP Radiator Thermostat (HMIP-eTRV)**.
 The initial check interval is set at 60 seconds. This is a good value for testing, but for final version set to higher value like every 5 minutes (300 seconds).
