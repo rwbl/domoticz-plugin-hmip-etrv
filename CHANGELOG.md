@@ -1,6 +1,11 @@
 # Changelog domoticz-plugin-hmip-etrv
 
-### v1.3.0 (Buld 20200312)
+### v1.3.0 (Build 20210118)
+* CHG: Changed XML Parser from lxml to ElementTree (in Python standard package) - encountered lxml issue ("ImportError") adding multiple devices with Domoticz 2020 or higher (not found an lxml solution).
+* UPD: Various minor improvements
+* FIX: Battery initial state capture
+
+### v1.2.2 (Build 20191229)
 * NEW: Profile selection 1=Winter,2=Summer
 
 ### v1.2.1 (Build 20191223)

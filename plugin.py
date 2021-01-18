@@ -5,6 +5,8 @@
 #   * get the low batery state
 #   * get the valve position
 #   * set the active profile
+# Dependencies
+# Library ElementTree (https://docs.python.org/3/library/xml.etree.elementtree.html#)
 # NOTES:
 # 1. After every change run: sudo service domoticz.sh restart
 # 2. Change user message for battery state in constants LOWBATMSG...
@@ -14,13 +16,13 @@
 # Version: See plugin xml definition
 
 """
-<plugin key="HMIP-eTRV" name="homematicIP Radiator Thermostat (HmIP-eTRV)" author="rwbL" version="1.3.0 (Build 20200312)">
+<plugin key="HMIP-eTRV" name="homematicIP Radiator Thermostat (HmIP-eTRV)" author="rwbL" version="1.3.0 (Build 20210118)">
     <description>
         <h2>homematicIP Radiator Thermostat (HMIP-eTRV) v1.3.0</h2>
         <ul style="list-style-type:square">
             <li>Set the setpoint (degrees C).</li>
             <li>Get the actual temperature (degrees C).</li>
-            <li>Get the low battery state (true or false). Threshold is set in the HomeMatic WebUI</li>
+            <li>Get the low battery state (true or false). Threshold is set in the HomeMatic WebUI.</li>
             <li>Get the valve position (0 - 100%).</li>
             <li>Set the active profile.</li>
             <li>Supported are the devices HmIP-eTRV-B, HmIP-eTRV-2</li>
@@ -35,7 +37,7 @@
         </ul>
         <h2>Hardware Configuration</h2>
         <ul style="list-style-type:square">
-            <li>Address (CCU IP address, default: ccu-ip-address)</li>
+            <li>Address (CCU IP address, default: 192.168.1.225)</li>
             <li>IDs (obtained via XML-API script http://ccu-ip-address/addons/xmlapi/statelist.cgi):</li>
             <ul style="list-style-type:square">
                 <li>Device ID HmIP-eTRV-B or HmIP-eTRV-2 (default: 1541)</li>
@@ -45,7 +47,7 @@
         </ul>
     </description>
     <params>
-        <param field="Address" label="CCU IP" width="200px" required="true" default="ccu-ip-address"/>
+        <param field="Address" label="CCU IP" width="200px" required="true" default="192.168.1.225"/>
         <param field="Mode1" label="Device ID" width="75px" required="true" default="1541"/>
         <param field="Mode2" label="Datapoint IDs" width="200px" required="true" default="1584,1567,1549,1576,1566"/>
         <param field="Mode5" label="Check Interval (sec)" width="75px" required="true" default="60"/>
@@ -60,7 +62,7 @@
 """
 
 # Set the plugin version
-PLUGINVERSION = "v1.2.1"
+PLUGINVERSION = "v1.3.0"
 PLUGINSHORTDESCRIPTON = "HmIP-eTRV"
 
 ## Imports
@@ -69,10 +71,10 @@ import urllib
 import urllib.request
 from datetime import datetime
 import json
-from lxml import etree
+import xml.etree.ElementTree as etree
 
 ## Domoticz device units used for creating & updating devices
-UNITSETPOINTTEMPERATURE = 1 # TypeName: N/A; Type ID:242 (Name:Thermostat); SubType ID:1 (Name:Setpoint); Create device use Type=242, Subtype=1
+UNITSETPOINTTEMPERATURE = 1 # TypeName: N/A; Type ID:242 (Name:Thermostat); Subtype ID:1 (Name:Setpoint); Create device use Type=242, Subtype=1
 UNITACTUALTEMPERATURE = 2   # TypeName: Temperature
 UNITLOWBAT = 3              # TypeName: Alert
 UNITLEVEL = 4               # TypeName: Percentage
@@ -98,9 +100,9 @@ TASKGETDATAPOINTS = 2
 ## Set the active profile
 TASKSETACTIVEPROFILE = 3
 
-# User Messages
+# User Messages - Change as required
 LOWBATMSGOK = "OK"
-LOWBATMSGNOK = "Niedrig!"
+LOWBATMSGNOK = "Niedrig"
 
 class BasePlugin:
 
@@ -118,7 +120,7 @@ class BasePlugin:
         # Thermostat Datapoints, i.e. Setpoint, LowBat, Temperature
         self.SetPoint = 0       # setpoint in C 
         self.Temperature = 0    # actual temperature
-        self.LowBat = "true"    # low battery "true" or "false"
+        self.LowBat = "unknown" # low battery "true" or "false". init with unknown to get the initial value
         self.Level = 0          # valve position 0 - 100%
         self.Profile = 0        # active profile 1 - 3 - init with 0 to ensure getting the value ser first time
                
@@ -132,41 +134,42 @@ class BasePlugin:
     def onStart(self):
         Domoticz.Debug(PLUGINSHORTDESCRIPTON + " " + PLUGINVERSION)
         Domoticz.Debug("onStart called")
-        Domoticz.Debug("Debug Mode:" + Parameters["Mode6"])
-        Domoticz.Debug("Devices:" + str(len(Devices)) )
 
+        Domoticz.Debug("Debug Mode:" + Parameters["Mode6"])
         if Parameters["Mode6"] == "Debug":
             self.debug = True
             Domoticz.Debugging(1)
             DumpConfigToLog()
 
         # if there no devices, create these
+        Domoticz.Debug("Devices:" + str(len(Devices)) )
         if (len(Devices) == 0):
             try:
                 Domoticz.Debug("Creating new devices ...")
                 
-                ## 1 - SET_POINT_TEMPERATURE - TypeName: Thermostat
+                ## 1 - SET_POINT_TEMPERATURE - TypeName: Thermostat (Type=242, Subtype=1)
                 Domoticz.Device(Name="Setpoint", Unit=UNITSETPOINTTEMPERATURE, Type=242, Subtype=1, Used=1).Create()
                 Domoticz.Debug("Device created: "+Devices[UNITSETPOINTTEMPERATURE].Name)
 
-                ## 2 - ACTUAL_TEMPERATURE - TypeName: Temperature
-                Domoticz.Device(Name="Temperature", Unit=UNITACTUALTEMPERATURE, TypeName="Temperature", Used=1).Create()
+                ## 2 - ACTUAL_TEMPERATURE - TypeName: Temperature (Type=80, Subtype=5)
+                Domoticz.Device(Name="Temperature", Unit=UNITACTUALTEMPERATURE, Type=80, Subtype=5, Used=1).Create()
                 Domoticz.Debug("Device created: "+Devices[UNITACTUALTEMPERATURE].Name)
 
-                ## 3 - LOW_BAT - TypeName: Alert
-                Domoticz.Device(Name="Battery", Unit=UNITLOWBAT, TypeName="Alert", Used=1).Create()
+                ## 3 - LOW_BAT - TypeName: Alert (Type=243, Subtype=22)
+                Domoticz.Device(Name="Battery", Unit=UNITLOWBAT, Type=243, Subtype=22, Used=1).Create()
+                Devices[UNITLOWBAT].Update( nValue=1, sValue=LOWBATMSGOK )
                 Domoticz.Debug("Device created: "+Devices[UNITLOWBAT].Name)
 
-                ## 4 - LEVEL - TypeName: Percentage
-                Domoticz.Device(Name="Valve", Unit=UNITLEVEL, TypeName="Percentage", Used=1).Create()
+                ## 4 - LEVEL - TypeName: Percentage (Type=243, Subtype=6)
+                Domoticz.Device(Name="Valve", Unit=UNITLEVEL, Type=243, Subtype=6, Used=1).Create()
                 Domoticz.Debug("Device created: "+Devices[UNITLEVEL].Name)
 
-                ## 5 - ACTIVE_PROFILE - TypeName: Selector Switch
-                Options = {"LevelActions": "|||",
+                ## 5 - ACTIVE_PROFILE - TypeName: Selector Switch (Type=244, Subtype=62)
+                SelectorSwitchOptions = {"LevelActions": "|||",
                       "LevelNames": "Off|1|2|3",
                       "LevelOffHidden": "true",
                       "SelectorStyle": "0"}
-                Domoticz.Device(Name="Profile", Unit=UNITACTIVEPROFILE, TypeName="Selector Switch",  Options=Options, Used=1).Create()            
+                Domoticz.Device(Name="Profile", Unit=UNITACTIVEPROFILE, Type=244, Subtype=62, Options=SelectorSwitchOptions, Used=1).Create()            
 
                 Domoticz.Debug("Creating new devices: OK")
             except:
@@ -263,7 +266,7 @@ class BasePlugin:
         # Parse the xml string 
         # Get the xml tree - requires several conversions
         tree = etree.fromstring(bytes(responseData, encoding='utf-8'))
-
+        
         # Handle the respective task to update the domoticz devices
         if self.Task == TASKGETDATAPOINTS:
             Domoticz.Debug("TASKGETDATAPOINTS")
@@ -276,70 +279,74 @@ class BasePlugin:
             pv = 0          #profilevalue
                         
             # Get the value for datapoint actual_temperature & update the device and log
-            ## note that a list is returned from tree.xpath, but holds only 1 value
-            actualtemperaturevalue = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXACTUALTEMPERATURE] + ']/@value')   
-            if len(actualtemperaturevalue) == 1:
-                ## convert the raspberrymatic value to float
-                atv = float(actualtemperaturevalue[0])
-                ## update the device if raspmatic value not equal domoticz value
-                if atv != self.Temperature:
-                    Devices[UNITACTUALTEMPERATURE].Update( nValue=0, sValue=str(round(atv,2)) )
-                    Domoticz.Debug("T Update=" + Devices[UNITACTUALTEMPERATURE].sValue)
-                self.Temperature = atv
+            ## <datapoint name="HmIP-RF.000A18A9A64DAC:1.ACTUAL_TEMPERATURE" type="ACTUAL_TEMPERATURE" ise_id="1567" value="23.000000" valuetype="4" valueunit="" timestamp="1610965660"/>
+            actualtemperaturevalue = tree.find(".//datapoint[@ise_id='" + self.DatapointsList[DATAPOINTINDEXACTUALTEMPERATURE] + "']").attrib['value']
+            ## convert the raspberrymatic value to float
+            atv = float(actualtemperaturevalue)
+            ## update the device if raspmatic value not equal domoticz value
+            if atv != self.Temperature:
+                Devices[UNITACTUALTEMPERATURE].Update( nValue=0, sValue=str(round(atv,2)) )
+                Domoticz.Debug("T Update=" + Devices[UNITACTUALTEMPERATURE].sValue)
+            self.Temperature = atv
 
             # Get the value for datapoint low_bat & update the device and log
-            lowbat = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXLOWBAT] + ']/@value')   
-            if len(lowbat) == 1:
-                ## Battery status: false=green (1), true=red (4); store the lowbat state
-                ## update the device if raspmatic value not equal domoticz value
-                lbv = lowbat[0]
-                if lbv != self.LowBat:
-                    if lbv == "false":
-                        Devices[UNITLOWBAT].Update( nValue=1, sValue=LOWBATMSGOK )
-                    if lbv == "true":
-                        Devices[UNITLOWBAT].Update( nValue=4, sValue=LOWBATMSGNOK )
-                    Domoticz.Debug("B Update=" + Devices[UNITLOWBAT].sValue)
-                self.LowBat = lbv
+            lowbat = tree.find(".//datapoint[@ise_id='" + self.DatapointsList[DATAPOINTINDEXLOWBAT] + "']").attrib['value']
+            ## Battery status: false=green (1), true=red (4); store the lowbat state
+            ## update the device if raspmatic value not equal domoticz value
+            lbv = lowbat
+            if lbv != self.LowBat:
+                if lbv == "false":
+                    Devices[UNITLOWBAT].Update( nValue=1, sValue=LOWBATMSGOK )
+                if lbv == "true":
+                    Devices[UNITLOWBAT].Update( nValue=4, sValue=LOWBATMSGNOK )
+                Domoticz.Debug("B Update=" + Devices[UNITLOWBAT].sValue)
+            self.LowBat = lbv
 
             # Get the value for datapoint set_point_temperature & update the device and log
-            setpointtemperaturevalue = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXSETPOINTTEMPERATURE] + ']/@value')   
-            if len(setpointtemperaturevalue) == 1:
-                ## setpoint value raspberrymatic
-                spvrm = float(setpointtemperaturevalue[0])
-                ## setpoint value domoticz
-                spvdom = float(Devices[UNITSETPOINTTEMPERATURE].sValue)
+            setpointtemperaturevalue = tree.find(".//datapoint[@ise_id='" + self.DatapointsList[DATAPOINTINDEXSETPOINTTEMPERATURE] + "']").attrib['value']
+            ## setpoint value raspberrymatic
+            spvrm = float(setpointtemperaturevalue)
+            ## setpoint value domoticz
+            spvdomsvalue = Devices[UNITSETPOINTTEMPERATURE].sValue
+            Domoticz.Debug("SP DOMOTICZ sValue=" + spvdomsvalue)
+            try:
+                ## check if the domoticz setpoint svalue is empty. if the case then set to raspberrymatic setpointvalue
+                if not spvdomsvalue:
+                    spvdomsvalue = setpointtemperaturevalue
+                    Devices[UNITSETPOINTTEMPERATURE].Update( nValue=1, sValue= str(spvrm) )    
+                spvdom = float(spvdomsvalue)
                 ## Devices[UNITSETPOINTTEMPERATURE].Update( nValue=1, sValue= str(setpointtemperaturevalue[0]) )    
                 ## Domoticz.Debug("SP RM=" + str(spvrm) + ", SP DOM=" + str(spvdom))
                 ## Update the setpoint if changed by homematic or manual and not equal domoticz setpoint
                 if spvdom != spvrm:
                     Devices[UNITSETPOINTTEMPERATURE].Update( nValue=1, sValue= str(spvrm) )    
                     Domoticz.Debug("SP Update=RM=" + str(spvrm) + ", DOM=" + str(spvdom))
-
+            except:
+                Domoticz.Error("[ERROR] Setpoint Update. Can not convert Domoticz sValue to float:" + str(spvdomsvalue))
+                
             # Get the value for datapoint level & update the device and log
-            levelvalue = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXLEVEL] + ']/@value')   
-            if len(levelvalue) == 1:
-                ## convert the raspberrymatic value to an int times 100 to get the value between 0 - 100%
-                lvlv = float(levelvalue[0]) * 100
-                ## update the device if raspmatic value not equal domoticz value
-                if lvlv != self.Level:
-                    Devices[UNITLEVEL].Update( nValue=0, sValue=str(round(lvlv,0)) )
-                    Domoticz.Debug("L Update=" + Devices[UNITLEVEL].sValue)
-                self.Level = lvlv
+            levelvalue = tree.find(".//datapoint[@ise_id='" + self.DatapointsList[DATAPOINTINDEXLEVEL] + "']").attrib['value']
+            ## convert the raspberrymatic value to an int times 100 to get the value between 0 - 100%
+            lvlv = float(levelvalue) * 100
+            ## update the device if raspmatic value not equal domoticz value
+            if lvlv != self.Level:
+                Devices[UNITLEVEL].Update( nValue=0, sValue=str(round(lvlv,0)) )
+                Domoticz.Debug("L Update=" + Devices[UNITLEVEL].sValue)
+            self.Level = lvlv
 
             # Get the value for datapoint active_profile & update the device and log
-            profile = tree.xpath('//datapoint[@ise_id=' + self.DatapointsList[DATAPOINTINDEXACTIVEPROFILE] + ']/@value')   
-            if len(profile) == 1:
-                ## Active profile: 1-3; store the active profile
-                ## update the device if raspmatic value not equal domoticz value
-                ## the nvalue must be 2 to ensure the selector is on
-                ## the svalue is the level between 10 - 30, means the profile 1 - 3 needs to be converted to 10 -30
-                pv = int(profile[0])
-                if pv != self.Profile:
-                    Devices[UNITACTIVEPROFILE].Update( nValue=2, sValue=str(pv * 10) )
-                    Domoticz.Debug("P Update=" + Devices[UNITACTIVEPROFILE].sValue)
-                self.Profile = pv
-
-            Domoticz.Log("TASKGETDATAPOINTS:" + Parameters["Key"] + ":T=" + str(atv) + ", SP=" + str(spvrm) + ", B=" + lbv + ", L=" + str(lvlv) + ", P=" + str(pv) )
+            profile = tree.find(".//datapoint[@ise_id='" + self.DatapointsList[DATAPOINTINDEXACTIVEPROFILE] + "']").attrib['value']
+            ## Active profile: 1-3; store the active profile
+            ## update the device if raspmatic value not equal domoticz value
+            ## the nvalue must be 2 to ensure the selector is on
+            ## the svalue is the level between 10 - 30, means the profile 1 - 3 needs to be converted to 10 -30
+            pv = int(profile)
+            if pv != self.Profile:
+                Devices[UNITACTIVEPROFILE].Update( nValue=2, sValue=str(pv * 10) )
+                Domoticz.Debug("P Update=" + Devices[UNITACTIVEPROFILE].sValue)
+            self.Profile = pv
+            # Domoticz.Debug("TASKGETDATAPOINTS:" + Parameters["Key"] + ":T=" + str(atv) + ", SP=" + str(spvrm) + ", B=" + lbv + ", L=" + str(lvlv) + ", P=" + str(pv) )
+            # Domoticz.Log("TASKGETDATAPOINTS:" + Parameters["Key"] + ":T=" + str(atv) + ", SP=" + str(spvrm) + ", B=" + lbv + ", L=" + str(lvlv) + ", P=" + str(pv) )
             
         if self.Task == TASKSETPOINTTEMPERATURE:
             Domoticz.Debug("TASKSETPOINTTEMPERATURE")
