@@ -169,7 +169,7 @@ class BasePlugin:
                       "LevelNames": "Off|1|2|3",
                       "LevelOffHidden": "true",
                       "SelectorStyle": "0"}
-                Domoticz.Device(Name="Profile", Unit=UNITACTIVEPROFILE, Type=244, Subtype=62, Options=SelectorSwitchOptions, Used=1).Create()            
+                Domoticz.Device(Name="Profile", Unit=UNITACTIVEPROFILE, Type=244, Subtype=62, Switchtype=18, Options=SelectorSwitchOptions, Used=1).Create()            
 
                 Domoticz.Debug("Creating new devices: OK")
             except:
