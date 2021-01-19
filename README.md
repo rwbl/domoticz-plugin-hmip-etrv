@@ -43,7 +43,7 @@ Versions for developing & using this plugin.
 * RaspberryMatic 3.51.6.20200229 [info](https://raspberrymatic.de/)
 * XML-API CCU Addon 1.20 [info](https://github.com/jens-maus/XML-API)
 * Python 3.5.3
-* Python library lxml XML toolkit 3.7.1-1 [info](https://lxml.de/)
+* Python module ElementTree
 
 ## Prepare
 The RaspberryMatic system has been setup according [these](https://github.com/jens-maus/RaspberryMatic) guidelines.
